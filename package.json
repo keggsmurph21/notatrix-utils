@@ -1,0 +1,28 @@
+{
+  "name": "notatrix-utils",
+  "version": "1.0.0",
+  "description": "a small collection of utilities for working with the notatrix format, including a database backing and a small test server",
+  "main": "index.js",
+  "dependencies": {
+    "express": "^4.16.4",
+    "line-by-line": "^0.1.6",
+    "mongoose": "^5.3.16",
+    "notatrix": "^2.1.11",
+    "underscore": "^1.9.1",
+    "uuid": "^3.3.2"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/keggsmurph21/notatrix-utils.git"
+  },
+  "author": "Kevin Murphy",
+  "license": "GPL-3.0",
+  "bugs": {
+    "url": "https://github.com/keggsmurph21/notatrix-utils/issues"
+  },
+  "homepage": "https://github.com/keggsmurph21/notatrix-utils#readme"
+}
