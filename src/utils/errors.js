@@ -5,6 +5,7 @@ const nx = require('notatrix');
 
 class NotatrixUtilityError extends nx.NotatrixError {};
 class DBError extends NotatrixUtilityError {};
+class ScraperError extends NotatrixUtilityError {};
 class ServerError extends NotatrixUtilityError {};
 
 module.exports = {
@@ -12,6 +13,7 @@ module.exports = {
   NotatrixError: nx.NotatrixError,
   NotatrixUtilityError,
   DBError,
+  ScraperError,
   ServerError,
 
 };
