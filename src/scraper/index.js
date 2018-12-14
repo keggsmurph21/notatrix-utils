@@ -7,20 +7,14 @@ const fs = require('fs');
 const mkdirp = require('mkdirp');
 const request = require('request');
 const Emitter = require('events');
+
 const utils = require('../utils');
 const defaultConfig = require('./config');
-
-const re = {
-  repo: /^Repository/,
-  github: /^http.*com\/([\w-]*)\/([\w-]*)\/tree\/([\w-]*)$/,
-  slug: /[^\w]/g,
-  conllu: /\.conllu$/,
-};
 
 class Corpus {
   constructor(url) {
 
-    const chunks = url.match(re.github);
+    const chunks = url.match(utils.re.github);
 
     this.url = url;
     this.org = chunks[1];
@@ -57,6 +51,10 @@ class Scraper extends Emitter {
     mkdirp(this.config.outputDir);
 
     this.corpora = {};
+    this.status = {
+      done: 0,
+      total: 0,
+    };
 
     console.log('configuration:');
     console.log(this.config);
@@ -69,11 +67,13 @@ class Scraper extends Emitter {
         return next(err);
 
       if (res.statusCode !== 200) {
-        const msg = 'Got response ' + res.statusCode + ' from ' + url;
+        const msg = `Got response ${res.statusCode} from ${url}`;
         if (body.message)
-          msg += ' (' + body.message + ')';
+          msg += ` (${body.message})`;
 
+        process.stdout.clearLine();
         console.log(msg);
+
         return next();
       }
 
@@ -95,7 +95,7 @@ class Scraper extends Emitter {
 
         li = $(li);
 
-        if (re.repo.test(li.text()))
+        if (utils.re.repo.test(li.text()))
           li.find('a').each((j, a) => {
 
             urls.push($(a).attr('href'));
@@ -103,48 +103,58 @@ class Scraper extends Emitter {
           });
       });
 
-      Promise.all(urls.map(url => {
+      process.stdout.write(`found ${urls.length} treebank repositories at ${this.config.UDWebRoot}\n`);
+
+      Promise.all(urls.slice(0,3).map(url => {
 
         const corpus = new Corpus(url);
         this.corpora[corpus.id] = corpus;
-        console.log('found corpus ' + corpus.id, corpus.filesUrl);
 
         return new Promise((resolve, reject) => {
           this.get(corpus.filesUrl, (err, contents) => {
-            if (contents)
 
-              Promise.all(JSON.parse(contents).map(file => {
-                if (re.conllu.test(file.name)) {
+            if (!contents)
+              return resolve();
 
-                  corpus.files[file.name] = null;
+            Promise.all(JSON
+              .parse(contents)
+              .filter(file => utils.re.conllu.test(file.name))
+              .map(file => {
 
-                  return new Promise((resolve, reject) => {
-                    this.get(file.download_url, (err, contents) => {
-                      if (contents) {
+                this.status.total++;
+                corpus.files[file.name] = null;
 
-                        let filepath = path.join(this.config.outputDir, corpus.name, corpus.branch);
-                        mkdirp(filepath, err => {
+                return new Promise((resolve, reject) => {
+                  this.get(file.download_url, (err, contents) => {
 
-                          filepath = path.join(filepath, file.name);
-                          fs.writeFile(filepath, contents, err => {
+                    if (!contents)
+                      return resolve();
 
-                            if (err)
-                              reject(err);
+                    let filepath = path.join(this.config.outputDir, corpus.name, corpus.branch);
+                    mkdirp(filepath, err => {
 
-                            corpus.files[file.name] = filepath;
-                            console.log('wrote corpus to ' + filepath);
+                      filepath = path.join(filepath, file.name);
+                      fs.writeFile(filepath, contents, err => {
 
-                            resolve();
+                        if (err)
+                          return reject(err);
 
-                          });
+                        corpus.files[file.name] = filepath;
 
-                        });
+                        this.status.done += 1;
 
-                      }
+                        process.stderr.clearLine();
+                        process.stderr.write(`\rwrote corpus ${this.status.done} of ${this.status.total} to ${filepath}`);
+
+                        return resolve();
+
+                      });
+
                     });
                   });
-                }
-              })).then(resolve).catch(reject);
+                });
+
+            })).then(resolve).catch(reject);
 
           });
         });
@@ -165,8 +175,6 @@ class Scraper extends Emitter {
   }
 
   getResults() {
-
-    console.log(this.corpora);
 
     let corpora = {};
     _.each(this.corpora, corpus => {
@@ -189,13 +197,14 @@ class Scraper extends Emitter {
     const filepath = path.join(this.config.outputDir, this.config.outputFilename);
     const contents = JSON.stringify(this.getResults(), null, 2);
 
-    console.log(contents);
     fs.writeFile(filepath, contents, err => {
 
       if (err)
         throw err;
 
-      console.log('wrote summary file to ' + filepath);
+      process.stderr.clearLine();
+      process.stderr.write(`\rwrote ${this.status.done} corpora to ${this.config.outputDir}\n`);
+      process.stderr.write(`wrote summary file (${this.config.outputFilename}) to ${this.config.outputDir}\n`);
 
       if (next)
         next(this.corpora);
@@ -204,7 +213,4 @@ class Scraper extends Emitter {
   }
 }
 
-const s = new Scraper();
-s.scrape(corpora => {
-  console.log('done!');
-})
+module.exports = Scraper;
