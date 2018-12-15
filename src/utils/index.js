@@ -5,6 +5,12 @@ const _ = require('underscore');
 const constants = require('./constants');
 const errors = require('./errors');
 const funcs = require('./funcs');
-const regex = require('./regex');
+const re = require('./regex');
+const Trie = require('./trie');
 
-module.exports = _.extend({ re: regex }, errors, constants, funcs);
+module.exports = _.extend({
+
+  re,
+  Trie,
+
+}, errors, constants, funcs);
