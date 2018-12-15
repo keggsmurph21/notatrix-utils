@@ -103,9 +103,9 @@ class Scraper extends Emitter {
           });
       });
 
-      process.stdout.write(`found ${urls.length} treebank repositories at ${this.config.UDWebRoot}\n`);
+      console.log(`found ${urls.length} treebank repositories at ${this.config.UDWebRoot}`);
 
-      Promise.all(urls.slice(0,3).map(url => {
+      Promise.all(urls.map(url => {
 
         const corpus = new Corpus(url);
         this.corpora[corpus.id] = corpus;
